@@ -15,7 +15,7 @@
             overflow: hidden;
         }
 
-        button {
+        button, #searchBar, #imageInput {
             position: absolute;
             padding: 15px 25px;
             font-size: 18px;
@@ -23,19 +23,13 @@
         }
 
         #searchBar {
-            position: fixed;
             top: 20px;
             left: 20px;
-            padding: 10px;
-            font-size: 16px;
         }
 
         #imageInput {
-            position: fixed;
             top: 50px;
             left: 20px;
-            padding: 10px;
-            font-size: 16px;
         }
 
         #drawingCanvas {
@@ -56,40 +50,90 @@
     <canvas id="drawingCanvas"></canvas>
 
     <script>
-        // Gravitacija
+        // Gravitacija za elemente
         const gravity = 0.2;
+        const elements = [];
+
         let button = document.getElementById("uselessBtn");
+        let searchBar = document.getElementById("searchBar");
+        let imageInput = document.getElementById("imageInput");
+
         let posX = Math.random() * window.innerWidth;
         let posY = Math.random() * window.innerHeight;
         let velocityY = 0;
+        let isDrawing = false;
+        let lines = []; // Spremi sve linije za crtanje
 
         button.style.left = posX + "px";
         button.style.top = posY + "px";
 
-        // Dugme se pomera
-        button.addEventListener("click", function() {
-            posX = Math.random() * window.innerWidth;
-            posY = Math.random() * window.innerHeight;
-            velocityY = 0;  // Resetovanje gravitacije
-            button.style.left = posX + "px";
-            button.style.top = posY + "px";
+        // Dodavanje gravitacije za sve elemente
+        elements.push(button);
+        elements.push(searchBar);
+        elements.push(imageInput);
+
+        // Funkcija za primenu gravitacije
+        function applyGravity() {
+            elements.forEach(element => {
+                let velocityY = 0;
+                let posX = parseFloat(element.style.left || 0);
+                let posY = parseFloat(element.style.top || 0);
+
+                velocityY += gravity;
+                posY += velocityY;
+                if (posY >= window.innerHeight - element.offsetHeight) {
+                    velocityY = -velocityY * 0.8; // Odbijanje
+                    posY = window.innerHeight - element.offsetHeight;
+                }
+
+                element.style.left = posX + "px";
+                element.style.top = posY + "px";
+            });
+
+            requestAnimationFrame(applyGravity);
+        }
+
+        // Funkcija za crtanje
+        const canvas = document.getElementById("drawingCanvas");
+        const ctx = canvas.getContext("2d");
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        canvas.addEventListener("mousedown", (e) => {
+            if (isDrawing) {
+                lines.push([{x: e.clientX, y: e.clientY}]);
+            }
         });
 
-        // Gravitacija za dugme
-        function update() {
-            velocityY += gravity;
-            posY += velocityY;
-            if (posY >= window.innerHeight - button.offsetHeight) {
-                velocityY = -velocityY * 0.8; // Odbijanje
-                posY = window.innerHeight - button.offsetHeight;
+        canvas.addEventListener("mousemove", (e) => {
+            if (isDrawing) {
+                lines[lines.length - 1].push({x: e.clientX, y: e.clientY});
+                redraw();
             }
-            button.style.left = posX + "px";
-            button.style.top = posY + "px";
-            requestAnimationFrame(update);
-        }
-        update();
+        });
 
-        // Pretraga preko DuckDuckGo
+        // Funkcija za crtanje svih linija
+        function redraw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            lines.forEach(line => {
+                ctx.beginPath();
+                ctx.moveTo(line[0].x, line[0].y);
+                line.forEach(point => {
+                    ctx.lineTo(point.x, point.y);
+                    ctx.stroke();
+                });
+            });
+        }
+
+        // Funkcija za "W" tipku za crtanje
+        window.addEventListener('keydown', (e) => {
+            if (e.key === "w" || e.key === "W") {
+                isDrawing = !isDrawing;
+            }
+        });
+
+        // Funkcija za pretragu preko DuckDuckGo
         document.getElementById("searchBar").addEventListener("input", function(e) {
             let searchQuery = e.target.value;
             if (searchQuery.length > 2) {
@@ -97,7 +141,7 @@
             }
         });
 
-        // Dodavanje slika
+        // Funkcija za dodavanje slike
         document.getElementById("imageInput").addEventListener("change", function(e) {
             let file = e.target.files[0];
             let img = new Image();
@@ -108,42 +152,28 @@
                 imgElement.style.position = "absolute";
                 imgElement.style.top = Math.random() * window.innerHeight + "px";
                 imgElement.style.left = Math.random() * window.innerWidth + "px";
+
+                // Premeraćemo slike
+                const maxWidth = 200;
+                const maxHeight = 200;
+                const aspectRatio = imgElement.width / imgElement.height;
+
+                if (imgElement.width > maxWidth || imgElement.height > maxHeight) {
+                    if (aspectRatio > 1) {
+                        imgElement.width = maxWidth;
+                        imgElement.height = maxWidth / aspectRatio;
+                    } else {
+                        imgElement.height = maxHeight;
+                        imgElement.width = maxHeight * aspectRatio;
+                    }
+                }
+
                 document.body.appendChild(imgElement);
             };
         });
 
-        // Sprej za crtanje
-        const canvas = document.getElementById("drawingCanvas");
-        const ctx = canvas.getContext("2d");
-        let isDrawing = false;
-        let sprayRadius = 10;
-
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-
-        canvas.addEventListener("mousedown", (e) => {
-            isDrawing = true;
-        });
-
-        canvas.addEventListener("mouseup", () => {
-            isDrawing = false;
-        });
-
-        canvas.addEventListener("mousemove", (e) => {
-            if (isDrawing) {
-                drawSpray(e.clientX, e.clientY);
-            }
-        });
-
-        function drawSpray(x, y) {
-            ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-            for (let i = 0; i < 30; i++) {
-                let offsetX = (Math.random() - 0.5) * sprayRadius;
-                let offsetY = (Math.random() - 0.5) * sprayRadius;
-                ctx.fillRect(x + offsetX, y + offsetY, 2, 2);
-            }
-        }
+        // Funkcija za pokretanje gravitacije
+        applyGravity();
     </script>
 </body>
 </html>
-
