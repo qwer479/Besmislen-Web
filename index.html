@@ -12,22 +12,138 @@
             height: 100vh;
             background-color: #f0f0f0;
             font-family: Arial, sans-serif;
+            overflow: hidden;
         }
+
         button {
             position: absolute;
             padding: 15px 25px;
             font-size: 18px;
             cursor: pointer;
         }
+
+        #searchBar {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 10px;
+            font-size: 16px;
+        }
+
+        #imageInput {
+            position: fixed;
+            top: 50px;
+            left: 20px;
+            padding: 10px;
+            font-size: 16px;
+        }
+
+        #drawingCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
     </style>
 </head>
 <body>
+    <input id="searchBar" type="text" placeholder="Pretraži DuckDuckGo" />
+    <input id="imageInput" type="file" accept="image/*" />
     <button id="uselessBtn">Pritisni me</button>
+
+    <canvas id="drawingCanvas"></canvas>
+
     <script>
-        document.getElementById("uselessBtn").addEventListener("click", function() {
-            this.style.left = Math.random() * window.innerWidth + "px";
-            this.style.top = Math.random() * window.innerHeight + "px";
+        // Gravitacija
+        const gravity = 0.2;
+        let button = document.getElementById("uselessBtn");
+        let posX = Math.random() * window.innerWidth;
+        let posY = Math.random() * window.innerHeight;
+        let velocityY = 0;
+
+        button.style.left = posX + "px";
+        button.style.top = posY + "px";
+
+        // Dugme se pomera
+        button.addEventListener("click", function() {
+            posX = Math.random() * window.innerWidth;
+            posY = Math.random() * window.innerHeight;
+            velocityY = 0;  // Resetovanje gravitacije
+            button.style.left = posX + "px";
+            button.style.top = posY + "px";
         });
+
+        // Gravitacija za dugme
+        function update() {
+            velocityY += gravity;
+            posY += velocityY;
+            if (posY >= window.innerHeight - button.offsetHeight) {
+                velocityY = -velocityY * 0.8; // Odbijanje
+                posY = window.innerHeight - button.offsetHeight;
+            }
+            button.style.left = posX + "px";
+            button.style.top = posY + "px";
+            requestAnimationFrame(update);
+        }
+        update();
+
+        // Pretraga preko DuckDuckGo
+        document.getElementById("searchBar").addEventListener("input", function(e) {
+            let searchQuery = e.target.value;
+            if (searchQuery.length > 2) {
+                window.open(`https://duckduckgo.com/?q=${searchQuery}`, '_blank');
+            }
+        });
+
+        // Dodavanje slika
+        document.getElementById("imageInput").addEventListener("change", function(e) {
+            let file = e.target.files[0];
+            let img = new Image();
+            img.src = URL.createObjectURL(file);
+            img.onload = function() {
+                let imgElement = document.createElement("img");
+                imgElement.src = img.src;
+                imgElement.style.position = "absolute";
+                imgElement.style.top = Math.random() * window.innerHeight + "px";
+                imgElement.style.left = Math.random() * window.innerWidth + "px";
+                document.body.appendChild(imgElement);
+            };
+        });
+
+        // Sprej za crtanje
+        const canvas = document.getElementById("drawingCanvas");
+        const ctx = canvas.getContext("2d");
+        let isDrawing = false;
+        let sprayRadius = 10;
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        canvas.addEventListener("mousedown", (e) => {
+            isDrawing = true;
+        });
+
+        canvas.addEventListener("mouseup", () => {
+            isDrawing = false;
+        });
+
+        canvas.addEventListener("mousemove", (e) => {
+            if (isDrawing) {
+                drawSpray(e.clientX, e.clientY);
+            }
+        });
+
+        function drawSpray(x, y) {
+            ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+            for (let i = 0; i < 30; i++) {
+                let offsetX = (Math.random() - 0.5) * sprayRadius;
+                let offsetY = (Math.random() - 0.5) * sprayRadius;
+                ctx.fillRect(x + offsetX, y + offsetY, 2, 2);
+            }
+        }
     </script>
 </body>
 </html>
+
